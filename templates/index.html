@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Virtual Doctor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#060818;
+      --bg2:#0b1022;
+      --glass:rgba(255,255,255,0.04);
+      --glass2:rgba(255,255,255,0.07);
+      --border:rgba(255,255,255,0.09);
+      --border2:rgba(255,255,255,0.14);
+      --accent:#6366f1;
+      --accent2:#8b5cf6;
+      --cyan:#22d3ee;
+      --green:#10b981;
+      --yellow:#f59e0b;
+      --red:#ef4444;
+      --pink:#ec4899;
+      --text:#f1f5f9;
+      --muted:#64748b;
+      --muted2:#94a3b8;
+      --r:16px;
+    }
+    html{scroll-behavior:smooth}
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:'Inter',sans-serif;
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+    /* BG animated blobs */
+    body::before{
+      content:'';position:fixed;top:-30%;left:-20%;
+      width:600px;height:600px;border-radius:50%;
+      background:radial-gradient(circle,rgba(99,102,241,0.15),transparent 70%);
+      animation:blob1 12s infinite alternate;pointer-events:none;z-index:0;
+    }
+    body::after{
+      content:'';position:fixed;bottom:-20%;right:-10%;
+      width:500px;height:500px;border-radius:50%;
+      background:radial-gradient(circle,rgba(139,92,246,0.12),transparent 70%);
+      animation:blob2 15s infinite alternate;pointer-events:none;z-index:0;
+    }
+    @keyframes blob1{to{transform:translate(80px,60px) scale(1.1)}}
+    @keyframes blob2{to{transform:translate(-60px,-80px) scale(1.15)}}
+
+    /* NAV */
+    nav{
+      position:sticky;top:0;z-index:100;
+      background:rgba(6,8,24,0.8);
+      backdrop-filter:blur(20px);
+      border-bottom:1px solid var(--border);
+      padding:0 32px;
+      display:flex;align-items:center;justify-content:space-between;
+      height:64px;
+    }
+    .nav-brand{display:flex;align-items:center;gap:12px}
+    .nav-logo{
+      width:38px;height:38px;border-radius:10px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.2rem;box-shadow:0 0 20px rgba(99,102,241,0.4);
+    }
+    .nav-title{font-size:1.1rem;font-weight:700;letter-spacing:-.3px}
+    .nav-title span{color:var(--accent)}
+    .nav-badge{
+      background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);
+      color:var(--green);padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;
+      display:flex;align-items:center;gap:5px;
+    }
+    .nav-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+    /* HERO */
+    .hero{
+      text-align:center;padding:60px 20px 40px;position:relative;z-index:1;
+    }
+    .hero-tag{
+      display:inline-flex;align-items:center;gap:8px;
+      background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);
+      color:var(--accent);padding:6px 16px;border-radius:20px;
+      font-size:0.78rem;font-weight:600;letter-spacing:.5px;
+      text-transform:uppercase;margin-bottom:20px;
+    }
+    .hero h1{
+      font-size:clamp(2rem,5vw,3.2rem);font-weight:800;letter-spacing:-1px;
+      line-height:1.15;margin-bottom:14px;
+      background:linear-gradient(135deg,#fff 30%,var(--accent) 70%,var(--cyan));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+    }
+    .hero p{color:var(--muted2);font-size:1rem;max-width:520px;margin:0 auto 30px;line-height:1.7}
+    .hero-stats{
+      display:inline-flex;gap:32px;flex-wrap:wrap;justify-content:center;
+      background:var(--glass);border:1px solid var(--border);
+      border-radius:14px;padding:16px 28px;backdrop-filter:blur(10px);
+    }
+    .stat{text-align:center}
+    .stat-val{font-size:1.4rem;font-weight:700;color:var(--accent)}
+    .stat-lbl{font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+    /* MAIN LAYOUT */
+    .main{
+      max-width:1280px;margin:0 auto;padding:0 20px 60px;
+      display:grid;grid-template-columns:380px 1fr;gap:24px;
+      position:relative;z-index:1;
+    }
+    @media(max-width:900px){.main{grid-template-columns:1fr}}
+
+    /* GLASS CARD */
+    .gcard{
+      background:var(--glass);border:1px solid var(--border);
+      border-radius:var(--r);backdrop-filter:blur(16px);
+      box-shadow:0 8px 32px rgba(0,0,0,0.3);
+    }
+    .gcard-header{
+      padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;
+    }
+    .gcard-title{
+      font-size:0.85rem;font-weight:600;text-transform:uppercase;
+      letter-spacing:.8px;color:var(--muted2);
+      display:flex;align-items:center;gap:8px;
+    }
+    .gcard-title .dot{
+      width:8px;height:8px;border-radius:50%;background:var(--accent);
+      box-shadow:0 0 8px var(--accent);
+    }
+    /* SEARCH */
+    .search-wrap{position:relative;padding:16px 20px 10px}
+    .search-wrap input{
+      width:100%;padding:11px 16px 11px 42px;
+      background:var(--glass2);border:1px solid var(--border2);
+      border-radius:10px;color:var(--text);font-size:0.88rem;
+      font-family:'Inter',sans-serif;outline:none;
+      transition:border-color .2s,box-shadow .2s;
+    }
+    .search-wrap input::placeholder{color:var(--muted)}
+    .search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,0.15)}
+    .search-icon{
+      position:absolute;left:32px;top:50%;transform:translateY(-50%);
+      color:var(--muted);font-size:0.95rem;pointer-events:none;
+    }
+
+    /* SYMPTOM LIST */
+    #symptom-list{
+      height:290px;overflow-y:auto;margin:0 12px;
+      border-radius:10px;padding:4px;
+    }
+    #symptom-list::-webkit-scrollbar{width:4px}
+    #symptom-list::-webkit-scrollbar-track{background:transparent}
+    #symptom-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+    .sym-item{
+      display:flex;align-items:center;gap:10px;
+      padding:8px 12px;border-radius:8px;cursor:pointer;
+      font-size:0.84rem;color:var(--muted2);
+      transition:all .15s;user-select:none;
+    }
+    .sym-item:hover{background:var(--glass2);color:var(--text)}
+    .sym-item.active{background:rgba(99,102,241,0.12);color:var(--accent)}
+    .sym-check{
+      width:17px;height:17px;border-radius:5px;flex-shrink:0;
+      border:1.5px solid rgba(255,255,255,0.15);
+      display:flex;align-items:center;justify-content:center;
+      transition:all .15s;
+    }
+    .sym-item.active .sym-check{
+      background:var(--accent);border-color:var(--accent);
+      box-shadow:0 0 10px rgba(99,102,241,0.5);
+    }
+    .sym-item.active .sym-check::after{content:'✓';color:#fff;font-size:9px;font-weight:700}
+
+    /* CHIPS */
+    .chips-section{padding:12px 20px;border-top:1px solid var(--border);margin-top:8px}
+    .chips-label{font-size:0.75rem;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+    .chips-label .clear-all{color:var(--red);cursor:pointer;font-size:0.72rem;opacity:.8}
+    .chips-label .clear-all:hover{opacity:1}
+    #chips{display:flex;flex-wrap:wrap;gap:6px;min-height:28px}
+    .chip{
+      background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);
+      color:var(--accent);border-radius:20px;padding:3px 8px 3px 12px;
+      font-size:0.75rem;display:flex;align-items:center;gap:5px;font-weight:500;
+      animation:chipIn .15s ease;
+    }
+    @keyframes chipIn{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
+    .chip button{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:1rem;line-height:1;padding:0;transition:color .15s}
+    .chip button:hover{color:var(--red)}
+    /* PREDICT BTN */
+    .predict-wrap{padding:14px 20px 20px}
+    #predict-btn{
+      width:100%;padding:14px;border:none;border-radius:12px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:#fff;font-size:0.95rem;font-weight:700;cursor:pointer;
+      font-family:'Inter',sans-serif;letter-spacing:.3px;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      transition:all .2s;position:relative;overflow:hidden;
+      box-shadow:0 4px 20px rgba(99,102,241,0.35);
+    }
+    #predict-btn::before{
+      content:'';position:absolute;inset:0;
+      background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent);
+      opacity:0;transition:opacity .2s;
+    }
+    #predict-btn:hover:not(:disabled)::before{opacity:1}
+    #predict-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(99,102,241,0.5)}
+    #predict-btn:active:not(:disabled){transform:translateY(0)}
+    #predict-btn:disabled{opacity:0.4;cursor:not-allowed;box-shadow:none}
+
+    /* RIGHT PANEL */
+    .right-col{display:flex;flex-direction:column;gap:20px}
+
+    /* DISCLAIMER */
+    .disclaimer{
+      background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);
+      border-radius:12px;padding:12px 16px;
+      font-size:0.8rem;color:#fbbf24;display:flex;gap:10px;align-items:flex-start;
+    }
+
+    /* EMPTY STATE */
+    .empty-state{
+      background:var(--glass);border:1px solid var(--border);
+      border-radius:var(--r);padding:70px 20px;text-align:center;
+      backdrop-filter:blur(16px);
+    }
+    .empty-icon{font-size:3.5rem;margin-bottom:16px;animation:float 3s ease-in-out infinite}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+    .empty-state h3{font-size:1.1rem;font-weight:600;margin-bottom:8px;color:var(--muted2)}
+    .empty-state p{font-size:0.85rem;color:var(--muted);line-height:1.6}
+
+    /* LOADER */
+    .loader{
+      background:var(--glass);border:1px solid var(--border);
+      border-radius:var(--r);padding:60px 20px;text-align:center;
+      backdrop-filter:blur(16px);display:none;
+    }
+    .loader.active{display:block}
+    .spinner-ring{
+      width:48px;height:48px;border-radius:50%;margin:0 auto 16px;
+      border:3px solid rgba(99,102,241,0.15);
+      border-top-color:var(--accent);
+      animation:spin .7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loader p{color:var(--muted2);font-size:0.88rem}
+
+    /* ERROR */
+    .error-box{
+      background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);
+      color:#fca5a5;border-radius:12px;padding:14px 18px;
+      font-size:0.88rem;display:none;
+    }
+    /* RESULT PANEL */
+    #result-panel{display:none;flex-direction:column;gap:18px}
+    #result-panel.show{display:flex;animation:fadeUp .4s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+    /* DISEASE HERO CARD */
+    .disease-hero{
+      border-radius:var(--r);padding:28px;
+      background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1));
+      border:1px solid rgba(99,102,241,0.25);
+      backdrop-filter:blur(16px);position:relative;overflow:hidden;
+    }
+    .disease-hero::after{
+      content:'';position:absolute;top:-40px;right:-40px;
+      width:180px;height:180px;border-radius:50%;
+      background:radial-gradient(circle,rgba(99,102,241,0.2),transparent 70%);
+    }
+    .disease-hero .dtag{font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted2);margin-bottom:8px}
+    .disease-hero .dname{
+      font-size:2rem;font-weight:800;letter-spacing:-0.5px;
+      background:linear-gradient(135deg,#fff,var(--cyan));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      margin-bottom:16px;
+    }
+    .conf-row{display:flex;align-items:center;gap:12px}
+    .conf-pct{
+      font-size:1.6rem;font-weight:700;color:var(--green);
+      min-width:72px;
+    }
+    .conf-track{flex:1;height:8px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden}
+    .conf-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--green),var(--cyan));transition:width .9s cubic-bezier(.4,0,.2,1)}
+    .conf-label{font-size:0.78rem;color:var(--muted)}
+
+    /* TOP PREDICTIONS ROW */
+    .top-preds{display:flex;gap:10px;flex-wrap:wrap}
+    .pred-card{
+      flex:1;min-width:130px;padding:14px 16px;
+      background:var(--glass);border:1px solid var(--border);
+      border-radius:12px;backdrop-filter:blur(10px);
+      transition:border-color .2s;
+    }
+    .pred-card:first-child{border-color:rgba(99,102,241,0.3)}
+    .pred-card .medal{font-size:1.1rem;margin-bottom:4px}
+    .pred-card .pname{font-size:0.84rem;font-weight:600;color:var(--text);margin-bottom:3px}
+    .pred-card .pconf{font-size:0.78rem;color:var(--accent)}
+    .pred-card .pbar{height:3px;background:rgba(255,255,255,0.07);border-radius:2px;margin-top:8px;overflow:hidden}
+    .pred-card .pbar-fill{height:100%;background:var(--accent);border-radius:2px}
+    /* DESCRIPTION */
+    .desc-block{
+      background:var(--glass);border:1px solid var(--border);
+      border-radius:var(--r);padding:22px;backdrop-filter:blur(16px);
+    }
+    .block-title{
+      font-size:0.75rem;font-weight:600;text-transform:uppercase;
+      letter-spacing:.8px;margin-bottom:12px;
+      display:flex;align-items:center;gap:8px;
+    }
+    .block-title .bi{
+      width:26px;height:26px;border-radius:7px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:0.85rem;flex-shrink:0;
+    }
+    .desc-block p{font-size:0.9rem;color:var(--muted2);line-height:1.75}
+
+    /* INFO GRID */
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:600px){.info-grid{grid-template-columns:1fr}}
+    .info-block{
+      background:var(--glass);border:1px solid var(--border);
+      border-radius:14px;padding:18px;backdrop-filter:blur(16px);
+      transition:border-color .2s,transform .2s;
+    }
+    .info-block:hover{transform:translateY(-2px)}
+    .info-block ul{list-style:none;margin-top:2px}
+    .info-block ul li{
+      font-size:0.83rem;color:var(--muted2);
+      padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+      display:flex;align-items:flex-start;gap:8px;line-height:1.4;
+    }
+    .info-block ul li:last-child{border-bottom:none}
+    .info-block ul li .li-dot{
+      width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0;
+    }
+
+    /* Block accent colors */
+    .blk-diet  .block-title{color:#10b981}
+    .blk-diet  .bi{background:rgba(16,185,129,0.12)}
+    .blk-diet  .li-dot{background:#10b981}
+    .blk-diet:hover{border-color:rgba(16,185,129,0.3)}
+
+    .blk-med   .block-title{color:#f59e0b}
+    .blk-med   .bi{background:rgba(245,158,11,0.12)}
+    .blk-med   .li-dot{background:#f59e0b}
+    .blk-med:hover{border-color:rgba(245,158,11,0.3)}
+
+    .blk-prec  .block-title{color:#ef4444}
+    .blk-prec  .bi{background:rgba(239,68,68,0.12)}
+    .blk-prec  .li-dot{background:#ef4444}
+    .blk-prec:hover{border-color:rgba(239,68,68,0.3)}
+
+    .blk-work  .block-title{color:#22d3ee}
+    .blk-work  .bi{background:rgba(34,211,238,0.12)}
+    .blk-work  .li-dot{background:#22d3ee}
+    .blk-work:hover{border-color:rgba(34,211,238,0.3)}
+
+    .blk-desc  .block-title{color:#a78bfa}
+
+    /* FOOTER */
+    footer{
+      text-align:center;padding:28px;
+      color:var(--muted);font-size:0.78rem;
+      border-top:1px solid var(--border);
+      position:relative;z-index:1;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">🩺</div>
+    <div class="nav-title">AI <span>Virtual</span> Doctor</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="nav-badge">● Model Active</div>
+    <div style="font-size:0.82rem;color:var(--muted2)">👤 {{ user_name }}</div>
+    <a href="/logout" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);
+       color:#fca5a5;padding:5px 14px;border-radius:20px;font-size:0.75rem;
+       text-decoration:none;font-weight:600;transition:all .2s"
+       onmouseover="this.style.background='rgba(239,68,68,0.2)'"
+       onmouseout="this.style.background='rgba(239,68,68,0.1)'">Logout</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">⚡ AI-Powered Disease Prediction</div>
+  <h1>Diagnose Your Symptoms<br/>Instantly</h1>
+  <p>Select your symptoms and get an AI-powered disease prediction with detailed treatment guidance.</p>
+
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: Symptom Selector -->
+  <div class="gcard" style="align-self:start">
+    <div class="gcard-header">
+      <div class="gcard-title"><span class="dot"></span>Symptom Selector</div>
+      <span style="font-size:0.75rem;color:var(--muted)" id="sym-total-count"></span>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="sym-search" placeholder="Search symptoms..." autocomplete="off"/>
+    </div>
+
+    <div id="symptom-list"></div>
+
+    <div class="chips-section">
+      <div class="chips-label">
+        <span>Selected: <strong id="count" style="color:var(--accent)">0</strong></span>
+        <span class="clear-all" onclick="clearAll()">Clear all</span>
+      </div>
+      <div id="chips"></div>
+    </div>
+
+    <div class="predict-wrap">
+      <button id="predict-btn" disabled>
+        <span>🧬</span> Analyze Symptoms
+      </button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-col">
+    <div class="disclaimer">
+      <span>⚠️</span>
+      <span>For educational use only. Always consult a licensed physician for actual medical advice.</span>
+    </div>
+
+    <div class="loader" id="loader">
+      <div class="spinner-ring"></div>
+      <p>Analyzing your symptoms...</p>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🏥</div>
+      <h3>No Symptoms Selected</h3>
+      <p>Pick one or more symptoms from the left panel<br/>and click <strong>Analyze Symptoms</strong>.</p>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="result-panel">
+
+      <!-- Disease hero -->
+      <div class="disease-hero">
+        <div class="dtag">Predicted Disease</div>
+        <div class="dname" id="res-disease">—</div>
+        <div class="conf-row">
+          <div class="conf-pct" id="res-conf">—</div>
+          <div style="flex:1">
+            <div class="conf-label" style="margin-bottom:6px">Confidence Score</div>
+            <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 3 predictions -->
+      <div class="top-preds" id="top-preds"></div>
+
+      <!-- Description -->
+      <div class="desc-block blk-desc">
+        <div class="block-title"><span class="bi">📋</span>About this Disease</div>
+        <p id="res-desc">—</p>
+      </div>
+
+      <!-- Info grid -->
+      <div class="info-grid">
+        <div class="info-block blk-diet">
+          <div class="block-title"><span class="bi">🥗</span>Recommended Diet</div>
+          <ul id="res-diet"></ul>
+        </div>
+        <div class="info-block blk-med">
+          <div class="block-title"><span class="bi">💊</span>Medications</div>
+          <ul id="res-med"></ul>
+        </div>
+        <div class="info-block blk-prec">
+          <div class="block-title"><span class="bi">🛡️</span>Precautions</div>
+          <ul id="res-prec"></ul>
+        </div>
+        <div class="info-block blk-work">
+          <div class="block-title"><span class="bi">🏃</span>Workout / Activity</div>
+          <ul id="res-work"></ul>
+        </div>
+      </div>
+
+    </div><!-- /result-panel -->
+  </div><!-- /right-col -->
+</div><!-- /main -->
+
+<footer>AI Virtual Doctor &copy; 2026 &nbsp;·&nbsp; Powered by ML + LLM</footer>
+
+<!-- ══ CHATBOT WIDGET ══ -->
+<div id="chat-bubble" onclick="toggleChat()" title="Ask MedBot">
+  <span id="chat-bubble-icon">💬</span>
+</div>
+
+<div id="chat-window">
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <div class="chat-avatar">🤖</div>
+      <div>
+        <div class="chat-name">MedBot</div>
+        <div class="chat-status"><span class="online-dot"></span>Online</div>
+      </div>
+    </div>
+    <button onclick="toggleChat()" class="chat-close">✕</button>
+  </div>
+
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-msg bot">
+      <div class="msg-bubble">
+        👋 Hi! I'm <strong>MedBot</strong>, your AI medical assistant.<br/>
+        Ask me anything about diseases, symptoms, medications, or diet!
+      </div>
+    </div>
+  </div>
+
+  <div class="chat-input-wrap">
+    <input type="text" id="chat-input" placeholder="Ask a medical question..." autocomplete="off"
+           onkeydown="if(event.key==='Enter') sendChat()"/>
+    <button onclick="sendChat()" id="chat-send-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+  const selected = new Set();
+  let allSymptoms = [];
+
+  const searchEl   = document.getElementById('sym-search');
+  const listEl     = document.getElementById('symptom-list');
+  const chipsEl    = document.getElementById('chips');
+  const countEl    = document.getElementById('count');
+  const btnPredict = document.getElementById('predict-btn');
+  const loaderEl   = document.getElementById('loader');
+  const errorEl    = document.getElementById('error-box');
+  const emptyEl    = document.getElementById('empty-state');
+  const resultEl   = document.getElementById('result-panel');
+  const totalCount = document.getElementById('sym-total-count');
+
+  // Show empty state by default, hide result
+  emptyEl.style.display  = 'block';
+  resultEl.style.display = 'none';
+  loaderEl.style.display = 'none';
+  errorEl.style.display  = 'none';
+
+  async function initSymptoms() {
+    try {
+      const res  = await fetch('/api/symptoms');
+      const data = await res.json();
+      allSymptoms = data.symptoms;
+    } catch(e) {
+      allSymptoms = {{ symptoms | tojson }};
+    }
+    totalCount.textContent = allSymptoms.length + ' symptoms';
+    renderList('');
+  }
+
+  function renderList(filter) {
+    const f = filter.trim().toLowerCase();
+    const filtered = allSymptoms.filter(s =>
+      s.toLowerCase().replace(/_/g,' ').includes(f) || s.toLowerCase().includes(f)
+    );
+    listEl.innerHTML = filtered.length
+      ? filtered.map(s => {
+          const display = s.replace(/_/g,' ');
+          const safe    = s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          return `<div class="sym-item ${selected.has(s)?'active':''}" onclick="toggleSym('${safe}')">
+            <div class="sym-check"></div>
+            <span>${display}</span>
+          </div>`;
+        }).join('')
+      : `<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">No symptoms found</div>`;
+  }
+
+  function toggleSym(sym) {
+    selected.has(sym) ? selected.delete(sym) : selected.add(sym);
+    updateChips();
+    renderList(searchEl.value);
+  }
+
+  function clearAll() {
+    selected.clear();
+    updateChips();
+    renderList(searchEl.value);
+  }
+
+  function updateChips() {
+    countEl.textContent  = selected.size;
+    btnPredict.disabled  = selected.size === 0;
+    chipsEl.innerHTML = [...selected].map(s => {
+      const safe = s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="chip">${s.replace(/_/g,' ')}
+        <button onclick="toggleSym('${safe}')">×</button>
+      </div>`;
+    }).join('');
+  }
+
+  searchEl.addEventListener('input', () => renderList(searchEl.value));
+
+  btnPredict.addEventListener('click', async () => {
+    if (!selected.size) return;
+
+    // show loader, hide everything else
+    loaderEl.style.display = 'flex';
+    errorEl.style.display  = 'none';
+    emptyEl.style.display  = 'none';
+    resultEl.style.display = 'none';
+    btnPredict.disabled    = true;
+
+    try {
+      const res  = await fetch('/api/predict', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ symptoms: [...selected] })
+      });
+      const data = await res.json();
+
+      loaderEl.style.display = 'none';
+
+      if (!res.ok || data.error) {
+        errorEl.textContent    = '⚠️ ' + (data.error || 'Prediction failed.');
+        errorEl.style.display  = 'block';
+        emptyEl.style.display  = 'block';
+        return;
+      }
+      renderResult(data);
+
+    } catch(e) {
+      loaderEl.style.display = 'none';
+      errorEl.textContent    = '⚠️ Network error. Make sure Flask server is running.';
+      errorEl.style.display  = 'block';
+    } finally {
+      btnPredict.disabled = selected.size === 0;
+    }
+  });
+
+  function renderResult(d) {
+    // Disease name + confidence
+    document.getElementById('res-disease').textContent = d.predicted_disease;
+    document.getElementById('res-conf').textContent    = d.confidence + '%';
+    setTimeout(() => {
+      document.getElementById('conf-fill').style.width = Math.min(d.confidence, 100) + '%';
+    }, 50);
+
+    // Top 3 predictions
+    const medals = ['🥇','🥈','🥉'];
+    document.getElementById('top-preds').innerHTML = (d.top_predictions || []).map((p, i) => `
+      <div class="pred-card">
+        <div class="medal">${medals[i] || ''}</div>
+        <div class="pname">${p.disease}</div>
+        <div class="pconf">${p.confidence}% match</div>
+        <div class="pbar"><div class="pbar-fill" style="width:${p.confidence}%"></div></div>
+      </div>`).join('');
+
+    // Description
+    document.getElementById('res-desc').textContent = d.description || 'Not available.';
+
+    // Lists
+    fillList('res-diet',  d.diet,        '#10b981');
+    fillList('res-med',   d.medications, '#f59e0b');
+    fillList('res-prec',  d.precautions, '#ef4444');
+    fillList('res-work',  d.workouts,    '#22d3ee');
+
+    // Show result panel
+    resultEl.style.display = 'flex';
+    resultEl.style.flexDirection = 'column';
+    resultEl.style.gap = '18px';
+    resultEl.style.animation = 'fadeUp .4s ease';
+  }
+
+  function fillList(id, items, color) {
+    const el = document.getElementById(id);
+    if (!items || !items.length) {
+      el.innerHTML = `<li><span class="li-dot" style="background:${color}"></span>Not available</li>`;
+      return;
+    }
+    el.innerHTML = items.map(i =>
+      `<li><span class="li-dot" style="background:${color}"></span>${i}</li>`
+    ).join('');
+  }
+
+  initSymptoms();
+</script>
+
+<style>
+/* ── Chatbot Bubble ── */
+#chat-bubble{
+  position:fixed;bottom:28px;right:28px;z-index:999;
+  width:58px;height:58px;border-radius:50%;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;box-shadow:0 6px 24px rgba(99,102,241,0.5);
+  transition:all .25s;animation:bubblePop .4s ease;
+}
+#chat-bubble:hover{transform:scale(1.1);box-shadow:0 8px 32px rgba(99,102,241,0.7)}
+@keyframes bubblePop{from{transform:scale(0)}to{transform:scale(1)}}
+
+/* ── Chat Window ── */
+#chat-window{
+  position:fixed;bottom:100px;right:28px;z-index:998;
+  width:360px;height:520px;
+  background:rgba(10,13,28,0.97);
+  border:1px solid rgba(99,102,241,0.25);
+  border-radius:20px;overflow:hidden;
+  display:none;flex-direction:column;
+  box-shadow:0 24px 64px rgba(0,0,0,0.6);
+  animation:chatIn .25s ease;
+}
+#chat-window.open{display:flex}
+@keyframes chatIn{from{opacity:0;transform:translateY(20px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.chat-header{
+  padding:14px 16px;
+  background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1));
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.chat-header-left{display:flex;align-items:center;gap:10px}
+.chat-avatar{width:36px;height:36px;border-radius:50%;
+             background:linear-gradient(135deg,var(--accent),var(--accent2));
+             display:flex;align-items:center;justify-content:center;font-size:1rem}
+.chat-name{font-size:0.9rem;font-weight:700;color:var(--text)}
+.chat-status{font-size:0.72rem;color:var(--muted2);display:flex;align-items:center;gap:5px;margin-top:1px}
+.online-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.chat-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;
+            padding:4px;border-radius:6px;transition:all .15s}
+.chat-close:hover{background:rgba(255,255,255,0.07);color:var(--red)}
+
+.chat-messages{
+  flex:1;overflow-y:auto;padding:14px 14px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+
+.chat-msg{display:flex;align-items:flex-end;gap:6px}
+.chat-msg.bot{justify-content:flex-start}
+.chat-msg.user{justify-content:flex-end}
+
+.msg-bubble{
+  max-width:82%;padding:10px 14px;border-radius:16px;
+  font-size:0.84rem;line-height:1.55;
+  animation:msgIn .2s ease;
+}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.chat-msg.bot  .msg-bubble{background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.2);color:var(--text);border-bottom-left-radius:4px}
+.chat-msg.user .msg-bubble{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-bottom-right-radius:4px}
+
+.typing-bubble{display:flex;gap:4px;padding:12px 14px}
+.typing-bubble span{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:typing 1.2s infinite}
+.typing-bubble span:nth-child(2){animation-delay:.2s}
+.typing-bubble span:nth-child(3){animation-delay:.4s}
+@keyframes typing{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+.chat-input-wrap{
+  padding:12px 14px;border-top:1px solid rgba(255,255,255,0.06);
+  display:flex;gap:8px;align-items:center;
+}
+#chat-input{
+  flex:1;padding:10px 14px;background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);border-radius:24px;
+  color:var(--text);font-size:0.85rem;font-family:'Inter',sans-serif;outline:none;
+  transition:border-color .2s;
+}
+#chat-input::placeholder{color:rgba(148,163,184,0.5)}
+#chat-input:focus{border-color:var(--accent)}
+#chat-send-btn{
+  width:38px;height:38px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:50%;color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;box-shadow:0 2px 10px rgba(99,102,241,0.3);
+}
+#chat-send-btn:hover{transform:scale(1.1);box-shadow:0 4px 16px rgba(99,102,241,0.5)}
+#chat-send-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+</style>
+
+<script>
+// ── Chatbot ────────────────────────────────────────────────────────────────────
+const chatHistory = [];
+
+function toggleChat() {
+  const win = document.getElementById('chat-window');
+  win.classList.toggle('open');
+  if (win.classList.contains('open')) {
+    document.getElementById('chat-input').focus();
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg   = input.value.trim();
+  if (!msg) return;
+
+  input.value = '';
+  document.getElementById('chat-send-btn').disabled = true;
+
+  // Add user bubble
+  appendMsg('user', msg);
+  chatHistory.push({ role: 'user', content: msg });
+
+  // Typing indicator
+  const typingId = showTyping();
+
+  try {
+    const res  = await fetch('/api/chat', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ message: msg, history: chatHistory.slice(-10) })
+    });
+    const data = await res.json();
+    removeTyping(typingId);
+
+    if (data.error) {
+      appendMsg('bot', '⚠️ ' + data.error);
+    } else {
+      appendMsg('bot', data.reply);
+      chatHistory.push({ role: 'assistant', content: data.reply });
+    }
+  } catch(e) {
+    removeTyping(typingId);
+    appendMsg('bot', '⚠️ Network error. Please try again.');
+  } finally {
+    document.getElementById('chat-send-btn').disabled = false;
+    input.focus();
+  }
+}
+
+function appendMsg(role, text) {
+  const msgs = document.getElementById('chat-messages');
+  const div  = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  // Convert markdown-style bold **text** → <strong>
+  const safe = text.replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+                    .replace(/\n/g,'<br>');
+  div.innerHTML = `<div class="msg-bubble">${safe}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('chat-messages');
+  const id   = 'typing-' + Date.now();
+  const div  = document.createElement('div');
+  div.className = 'chat-msg bot';
+  div.id = id;
+  div.innerHTML = `<div class="msg-bubble typing-bubble"><span></span><span></span><span></span></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+</script>
+</body>
+</html>
