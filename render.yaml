@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ai-virtual-doctor
+    env: python
+    buildCommand: pip install -r requirements.txt && python setup_db.py && python train_model.py
+    startCommand: gunicorn app:app -c gunicorn_config.py
+    envVars:
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_DB
+        value: ai_doctor
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true

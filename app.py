@@ -14,6 +14,13 @@ from config import Config
 
 # Load .env file if present
 try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Fallback manual .env loader
+try:
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     if os.path.exists(env_path):
         with open(env_path) as f:
@@ -283,7 +290,8 @@ def api_chat():
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
     print("="*50)
-    print("  AI Virtual Doctor — http://127.0.0.1:5000")
+    print(f"  AI Virtual Doctor — http://127.0.0.1:{port}")
     print("="*50)
-    app.run(debug=True, port=5000)
+    app.run(debug=False, host="0.0.0.0", port=port)
