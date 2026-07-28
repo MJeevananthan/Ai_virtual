@@ -1,6 +1,6 @@
 """
 AI Virtual Doctor — Flask App
-SQLAlchemy — works with MySQL (local) and PostgreSQL (Render)
+MySQL via SQLAlchemy (local + Railway/PlanetScale cloud)
 """
 import os, pickle, ast
 import numpy as np
@@ -9,7 +9,6 @@ import bcrypt
 from flask import (Flask, render_template, request, jsonify,
                    redirect, url_for, session, flash)
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
 from groq import Groq
 from datetime import datetime
 
@@ -32,34 +31,32 @@ try:
 except Exception:
     pass
 
-# ── App setup ──────────────────────────────────────────────────────────────────
+# ── App ────────────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
 app.secret_key = os.environ.get("SECRET_KEY", "aivdoctor_secret_2026")
 
-# ── Database URL ───────────────────────────────────────────────────────────────
-# Priority: DATABASE_URL (Render PostgreSQL) > MySQL (local) > SQLite (fallback)
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+# ── Database (MySQL always) ────────────────────────────────────────────────────
+MYSQL_USER = os.environ.get("MYSQL_USER",     "root")
+MYSQL_PASS = os.environ.get("MYSQL_PASSWORD", "")
+MYSQL_HOST = os.environ.get("MYSQL_HOST",     "localhost")
+MYSQL_PORT = os.environ.get("MYSQL_PORT",     "3306")
+MYSQL_DB   = os.environ.get("MYSQL_DB",       "ai_doctor")
 
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+# Render / Railway gives MYSQL_URL directly — use if available
+MYSQL_URL  = os.environ.get("MYSQL_URL", "")
+if not MYSQL_URL:
+    MYSQL_URL = (
+        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASS}"
+        f"@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
+    )
 
-if not DATABASE_URL:
-    # Try MySQL locally
-    MYSQL_USER = os.environ.get("MYSQL_USER", "root")
-    MYSQL_PASS = os.environ.get("MYSQL_PASSWORD", "")
-    MYSQL_HOST = os.environ.get("MYSQL_HOST", "localhost")
-    MYSQL_DB   = os.environ.get("MYSQL_DB", "ai_doctor")
-    if MYSQL_PASS:
-        DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASS}@{MYSQL_HOST}/{MYSQL_DB}"
-    else:
-        # SQLite fallback — works everywhere without setup
-        DB_PATH      = os.path.join(BASE_DIR, "ai_doctor.db")
-        DATABASE_URL = f"sqlite:///{DB_PATH}"
-        print("[INFO] Using SQLite (no DATABASE_URL or MYSQL_PASSWORD set)")
-
-app.config["SQLALCHEMY_DATABASE_URI"]        = DATABASE_URL
+app.config["SQLALCHEMY_DATABASE_URI"]        = MYSQL_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"]      = {
+    "pool_recycle": 280,
+    "pool_pre_ping": True,
+}
 
 db = SQLAlchemy(app)
 
@@ -75,7 +72,7 @@ class User(db.Model):
 class ChatHistory(db.Model):
     __tablename__ = "chat_history"
     id         = db.Column(db.Integer, primary_key=True)
-    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id    = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role       = db.Column(db.String(20), nullable=False)
     message    = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -83,7 +80,7 @@ class ChatHistory(db.Model):
 class Prediction(db.Model):
     __tablename__ = "predictions"
     id         = db.Column(db.Integer, primary_key=True)
-    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_id    = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     symptoms   = db.Column(db.Text, nullable=False)
     predicted  = db.Column(db.String(200), nullable=False)
     confidence = db.Column(db.Float, nullable=False)
@@ -92,9 +89,9 @@ class Prediction(db.Model):
 with app.app_context():
     try:
         db.create_all()
-        print("[OK] Database tables created/verified")
+        print("[OK] MySQL tables ready")
     except Exception as e:
-        print(f"[WARN] DB init skipped: {e}")
+        print(f"[WARN] DB error: {e}")
 
 # ── Groq LLM ───────────────────────────────────────────────────────────────────
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
@@ -115,7 +112,7 @@ model, le, SYMPTOMS = load_artifacts()
 
 SYM_NORM_MAP = {}
 for s in SYMPTOMS:
-    SYM_NORM_MAP[s.strip().lower()]                  = s
+    SYM_NORM_MAP[s.strip().lower()]                   = s
     SYM_NORM_MAP[s.strip().lower().replace("_", " ")] = s
 
 print(f"[OK] Model loaded | Symptoms: {len(SYMPTOMS)} | Classes: {len(le.classes_)}")
@@ -275,20 +272,20 @@ def api_predict():
 
     try:
         db.session.add(Prediction(
-            user_id=session["user_id"],
-            symptoms=", ".join(matched),
-            predicted=primary,
-            confidence=top_preds[0]["confidence"]
+            user_id    = session["user_id"],
+            symptoms   = ", ".join(matched),
+            predicted  = primary,
+            confidence = top_preds[0]["confidence"]
         ))
         db.session.commit()
     except Exception:
         db.session.rollback()
 
     return jsonify({"predicted_disease": primary,
-                    "confidence": top_preds[0]["confidence"],
-                    "top_predictions": top_preds,
-                    "matched_symptoms": matched,
-                    "unrecognized": unrecognized,
+                    "confidence":        top_preds[0]["confidence"],
+                    "top_predictions":   top_preds,
+                    "matched_symptoms":  matched,
+                    "unrecognized":      unrecognized,
                     **info})
 
 # ══════════════════════════════════════════════════════════════════════════════

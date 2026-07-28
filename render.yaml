@@ -6,16 +6,9 @@ services:
     buildCommand: pip install -r requirements.txt && python train_model.py
     startCommand: gunicorn app:app -c gunicorn_config.py
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: ai-doctor-db
-          property: connectionString
+      - key: MYSQL_URL
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: SECRET_KEY
         generateValue: true
-
-databases:
-  - name: ai-doctor-db
-    plan: free
-    databaseName: ai_doctor
