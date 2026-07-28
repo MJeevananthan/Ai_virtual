@@ -38,18 +38,25 @@ app = Flask(__name__, template_folder=os.path.join(BASE_DIR, "templates"))
 app.secret_key = os.environ.get("SECRET_KEY", "aivdoctor_secret_2026")
 
 # ── Database URL ───────────────────────────────────────────────────────────────
-# Render gives DATABASE_URL (postgres://...) — fix to postgresql://
+# Priority: DATABASE_URL (Render PostgreSQL) > MySQL (local) > SQLite (fallback)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Local MySQL fallback
 if not DATABASE_URL:
+    # Try MySQL locally
     MYSQL_USER = os.environ.get("MYSQL_USER", "root")
     MYSQL_PASS = os.environ.get("MYSQL_PASSWORD", "")
     MYSQL_HOST = os.environ.get("MYSQL_HOST", "localhost")
-    MYSQL_DB   = os.environ.get("MYSQL_DB",   "ai_doctor")
-    DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASS}@{MYSQL_HOST}/{MYSQL_DB}"
+    MYSQL_DB   = os.environ.get("MYSQL_DB", "ai_doctor")
+    if MYSQL_PASS:
+        DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASS}@{MYSQL_HOST}/{MYSQL_DB}"
+    else:
+        # SQLite fallback — works everywhere without setup
+        DB_PATH      = os.path.join(BASE_DIR, "ai_doctor.db")
+        DATABASE_URL = f"sqlite:///{DB_PATH}"
+        print("[INFO] Using SQLite (no DATABASE_URL or MYSQL_PASSWORD set)")
 
 app.config["SQLALCHEMY_DATABASE_URI"]        = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -83,7 +90,11 @@ class Prediction(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+        print("[OK] Database tables created/verified")
+    except Exception as e:
+        print(f"[WARN] DB init skipped: {e}")
 
 # ── Groq LLM ───────────────────────────────────────────────────────────────────
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
