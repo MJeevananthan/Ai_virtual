@@ -563,7 +563,9 @@
       const data = await res.json();
       allSymptoms = data.symptoms;
     } catch(e) {
-      allSymptoms = {{ symptoms | tojson }};
+      // fallback — server-side rendered list
+      const raw = document.getElementById('symptoms-data');
+      allSymptoms = raw ? JSON.parse(raw.textContent) : [];
     }
     totalCount.textContent = allSymptoms.length + ' symptoms';
     renderList('');
@@ -695,6 +697,8 @@
 
   initSymptoms();
 </script>
+
+<script id="symptoms-data" type="application/json">{{ symptoms | tojson }}</script>
 
 <style>
 /* ── Chatbot Bubble ── */

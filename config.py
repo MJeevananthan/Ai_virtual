@@ -18,3 +18,4 @@ class Config:
     # Free API key: https://console.groq.com
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
     GROQ_MODEL   = "llama-3.3-70b-versatile"    # latest stable model
+
