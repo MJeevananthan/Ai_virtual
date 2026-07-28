@@ -1,12 +1,13 @@
 flask==3.0.3
-flask-mysqldb==2.0.0
-flask-login==0.6.3
+flask-sqlalchemy==3.1.1
+sqlalchemy==2.0.51
+psycopg2-binary==2.9.12
+pymysql==1.2.0
+cryptography==49.0.0
 scikit-learn==1.9.0
 pandas==3.0.3
 numpy==2.5.1
 bcrypt==5.0.0
 groq==1.5.0
-pymysql==1.2.0
-cryptography==49.0.0
 gunicorn==22.0.0
 python-dotenv==1.0.1
